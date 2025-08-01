@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Cámara, Datos y Captura</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #000;
+      color: white;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .contenedor {
+      position: relative;
+      flex-grow: 1;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    #camara {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    #datosOverlay {
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 15px;
+      text-align: center;
+      font-size: 1.8rem;
+    }
+
+    #capturaBtn {
+      background: #28a745;
+      color: white;
+      font-size: 1.2rem;
+      padding: 10px 20px;
+      border: none;
+      cursor: pointer;
+      margin: 10px auto;
+      border-radius: 10px;
+    }
+
+    #capturaBtn:hover {
+      background: #218838;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="contenedor">
+    <video id="camara" autoplay playsinline></video>
+    <div id="datosOverlay"></div>
+  </div>
+
+  <button id="capturaBtn">📸 Capturar Imagen</button>
+
+  <script>
+    // Solicitar datos
+    const nombreUsuario = prompt("Ingrese su nombre:") || "Usuario";
+    let horaManual = prompt("Ingrese la hora (HH:MM):") || "00:00";
+
+    // Obtener fecha del sistema
+    const fechaActual = new Date();
+    const dia = String(fechaActual.getDate()).padStart(2, '0');
+    const mes = String(fechaActual.getMonth() + 1).padStart(2, '0');
+    const anio = fechaActual.getFullYear();
+    const fechaFormateada = `${dia}/${mes}/${anio}`;
+
+    // Overlay de datos
+    const datosOverlay = document.getElementById('datosOverlay');
+    let ubicacionTexto = "📍 Obteniendo ubicación...";
+
+    datosOverlay.innerText = `${nombreUsuario} | 📅 ${fechaFormateada} 🕒 ${horaManual}\n${ubicacionTexto}`;
+
+    // Actualizar ubicación
+    function mostrarUbicacion(position) {
+      const lat = position.coords.latitude.toFixed(6);
+      const lon = position.coords.longitude.toFixed(6);
+      ubicacionTexto = `📍 Lat: ${lat} | Lon: ${lon}`;
+      datosOverlay.innerText = `${nombreUsuario} | 📅 ${fechaFormateada} 🕒 ${horaManual}\n${ubicacionTexto}`;
+    }
+
+    function errorUbicacion(error) {
+      ubicacionTexto = `❌ Error: ${error.message}`;
+      datosOverlay.innerText = `${nombreUsuario} | 📅 ${fechaFormateada} 🕒 ${horaManual}\n${ubicacionTexto}`;
+    }
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(mostrarUbicacion, errorUbicacion);
+    } else {
+      ubicacionTexto = "❌ Geolocalización no soportada.";
+    }
+
+    // Cámara
+    const video = document.getElementById('camara');
+
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+      .then(stream => {
+        video.srcObject = stream;
+      })
+      .catch(error => {
+        alert("No se pudo acceder a la cámara: " + error.message);
+      });
+
+    // Capturar imagen
+    document.getElementById('capturaBtn').addEventListener('click', () => {
+      const canvas = document.createElement('canvas');
+      const contexto = canvas.getContext('2d');
+
+      // Establecer tamaño igual al video
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+
+      // Dibujar imagen de la cámara
+      contexto.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // Dibujar overlay de texto (parte inferior)
+      contexto.fillStyle = 'rgba(0, 0, 0, 0.6)';
+      contexto.fillRect(0, canvas.height - 100, canvas.width, 100);
+
+      contexto.fillStyle = 'white';
+      contexto.font = 'bold 40px Arial';
+      contexto.textAlign = 'center';
+      contexto.fillText(`${nombreUsuario} | ${fechaFormateada} ${horaManual}`, canvas.width / 2, canvas.height - 50);
+
+      contexto.font = '30px Arial';
+      contexto.fillText(`${ubicacionTexto}`, canvas.width / 2, canvas.height - 10);
+
+      // Descargar imagen
+      const link = document.createElement('a');
+      link.download = 'captura.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    });
+  </script>
+
+</body>
+</html>
